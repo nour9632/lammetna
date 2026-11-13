@@ -3360,6 +3360,39 @@
       const m = document.getElementById(id);
       if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
     }
+    // تحديث فوري وتلقائي لقائمة المستخدمين من Supabase
+async function forceSyncUsers() {
+  try {
+    const client = window.supabaseClient || window.sb || window.supabase;
+    if (!client || typeof client.from !== 'function') return;
+
+    const { data, error } = await client
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (data && !error && data.length > 0) {
+      // تحديث المتغير العام والذاكرة المحلية للموقع
+      window.users = data;
+      if (typeof users !== 'undefined') users = data;
+      localStorage.setItem('lammetna_users', JSON.stringify(data));
+      localStorage.setItem('users', JSON.stringify(data));
+
+      // تحديث واجهة الأدمن تلقائياً إذا كانت مفتوحة
+      if (typeof renderAdminUsers === 'function') renderAdminUsers();
+      if (typeof renderAdmin === 'function') renderAdmin();
+      if (typeof updateAdminStats === 'function') updateAdminStats();
+    }
+  } catch (err) {
+    console.error('Sync error:', err);
+  }
+}
+
+// تشغيل التحديث فور فتح الموقع، وكل 5 ثوانٍ، وعند الضغط على أي تبويب
+window.addEventListener('load', () => {
+  setTimeout(forceSyncUsers, 1000);
+  setInterval(forceSyncUsers, 5000);
+});
   </script>
 
 </body>
