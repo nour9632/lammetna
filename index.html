@@ -3404,6 +3404,56 @@ window.addEventListener('load', () => {
   setTimeout(forceSyncUsers, 500);
   setInterval(forceSyncUsers, 4000);
 });
+    // جلب المستخدمين مباشرة من قاعدة بيانات لمّتنا وتحديث لوحة الأدمن
+async function forceSyncUsers() {
+  try {
+    // 1. البحث عن اتصال Supabase الموجود في ملفك أو استخدام الاتصال المباشر
+    const client = window.supabaseClient || window.sb || window.supabase || (typeof sb !== 'undefined' ? sb : null) || (typeof supabase !== 'undefined' && typeof supabase.from === 'function' ? supabase : null);
+    
+    let data = null;
+
+    if (client && typeof client.from === 'function') {
+      const res = await client.from('users').select('*').order('id', { ascending: false });
+      data = res.data;
+    }
+
+    // 2. إذا جلب البيانات بنجاح، يحدث لوحة الأدمن والذاكرة فوراً
+    if (data && Array.isArray(data) && data.length > 0) {
+      const cleanUsers = data.map(u => ({
+        ...u,
+        id: u.id,
+        name: u.full_name || u.name || u.username || 'مستخدم',
+        full_name: u.full_name || u.name || u.username || 'مستخدم',
+        username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
+        phone: u.phone || '0000',
+        pass: u.pass || u.password || '',
+        created_at: u.created_at ? u.created_at.split('T')[0] : '2026-11-12'
+      }));
+
+      window.users = cleanUsers;
+      if (typeof users !== 'undefined') users = cleanUsers;
+      if (typeof state !== 'undefined' && state.users) state.users = cleanUsers;
+
+      // حفظ في جميع المفاتيح المحتملة التي يقرأ منها موقعك
+      localStorage.setItem('lammetna_users', JSON.stringify(cleanUsers));
+      localStorage.setItem('users', JSON.stringify(cleanUsers));
+      localStorage.setItem('db_users', JSON.stringify(cleanUsers));
+
+      // تحديث عرض الأدمن
+      if (typeof renderAdminUsers === 'function') renderAdminUsers();
+      if (typeof renderAdmin === 'function') renderAdmin();
+      if (typeof updateAdminStats === 'function') updateAdminStats();
+      if (typeof render === 'function') render();
+    }
+  } catch (err) {
+    console.error('Sync error:', err);
+  }
+}
+
+window.addEventListener('load', () => {
+  setTimeout(forceSyncUsers, 800);
+  setInterval(forceSyncUsers, 4000);
+});
   </script>
 
 </body>
