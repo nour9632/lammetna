@@ -3360,7 +3360,7 @@
       const m = document.getElementById(id);
       if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
     }
-    // تحديث فوري وتلقائي لقائمة المستخدمين من Supabase
+   // مطابقة كاملة 100% بين جدول users في Supabase ولوحة الأدمن
 async function forceSyncUsers() {
   try {
     const client = window.supabaseClient || window.sb || window.supabase;
@@ -3371,14 +3371,24 @@ async function forceSyncUsers() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (data && !error && data.length > 0) {
-      // تحديث المتغير العام والذاكرة المحلية للموقع
-      window.users = data;
-      if (typeof users !== 'undefined') users = data;
-      localStorage.setItem('lammetna_users', JSON.stringify(data));
-      localStorage.setItem('users', JSON.stringify(data));
+    if (data && !error) {
+      const cleanUsers = data.map(u => ({
+        ...u,
+        id: u.id,
+        name: u.full_name || u.username || 'مستخدم',
+        full_name: u.full_name || u.username || 'مستخدم',
+        username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
+        phone: u.phone || '',
+        created_at: u.created_at ? u.created_at.split('T')[0] : ''
+      }));
 
-      // تحديث واجهة الأدمن تلقائياً إذا كانت مفتوحة
+      window.users = cleanUsers;
+      if (typeof users !== 'undefined') users = cleanUsers;
+      if (typeof state !== 'undefined' && state.users) state.users = cleanUsers;
+      
+      localStorage.setItem('lammetna_users', JSON.stringify(cleanUsers));
+      localStorage.setItem('users', JSON.stringify(cleanUsers));
+
       if (typeof renderAdminUsers === 'function') renderAdminUsers();
       if (typeof renderAdmin === 'function') renderAdmin();
       if (typeof updateAdminStats === 'function') updateAdminStats();
@@ -3388,10 +3398,11 @@ async function forceSyncUsers() {
   }
 }
 
-// تشغيل التحديث فور فتح الموقع، وكل 5 ثوانٍ، وعند الضغط على أي تبويب
 window.addEventListener('load', () => {
-  setTimeout(forceSyncUsers, 1000);
-  setInterval(forceSyncUsers, 5000);
+  localStorage.removeItem('lammetna_users');
+  localStorage.removeItem('users');
+  setTimeout(forceSyncUsers, 500);
+  setInterval(forceSyncUsers, 4000);
 });
   </script>
 
