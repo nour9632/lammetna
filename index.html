@@ -3360,38 +3360,36 @@
       const m = document.getElementById(id);
       if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
     }
-   // مطابقة كاملة 100% بين جدول users في Supabase ولوحة الأدمن
+ // مزامنة مباشرة مع متغير registeredUsers الخاص بلوحة أدمن لمّتنا
 async function forceSyncUsers() {
   try {
-    const client = window.supabaseClient || window.sb || window.supabase;
+    const client = window.supabaseClient || window.sb || (typeof supabaseClient !== 'undefined' ? supabaseClient : null) || (typeof sb !== 'undefined' ? sb : null);
     if (!client || typeof client.from !== 'function') return;
 
-    const { data, error } = await client
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data, error } = await client.from('users').select('*').order('id', { ascending: false });
 
-    if (data && !error) {
-      const cleanUsers = data.map(u => ({
+    if (data && !error && Array.isArray(data)) {
+      const mappedUsers = data.map(u => ({
         ...u,
         id: u.id,
-        name: u.full_name || u.username || 'مستخدم',
-        full_name: u.full_name || u.username || 'مستخدم',
+        fullName: u.full_name || u.fullName || u.username || 'مستخدم',
+        full_name: u.full_name || u.fullName || u.username || 'مستخدم',
         username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
-        phone: u.phone || '',
+        phone: u.phone || '0000',
+        pass: u.pass || u.password || '123456',
+        createdAt: u.created_at ? u.created_at.split('T')[0] : '',
         created_at: u.created_at ? u.created_at.split('T')[0] : ''
       }));
 
-      window.users = cleanUsers;
-      if (typeof users !== 'undefined') users = cleanUsers;
-      if (typeof state !== 'undefined' && state.users) state.users = cleanUsers;
-      
-      localStorage.setItem('lammetna_users', JSON.stringify(cleanUsers));
-      localStorage.setItem('users', JSON.stringify(cleanUsers));
+      window.registeredUsers = mappedUsers;
+      if (typeof registeredUsers !== 'undefined') registeredUsers = mappedUsers;
+
+      localStorage.setItem('lammetna_users', JSON.stringify(mappedUsers));
+      localStorage.setItem('registeredUsers', JSON.stringify(mappedUsers));
 
       if (typeof renderAdminUsers === 'function') renderAdminUsers();
-      if (typeof renderAdmin === 'function') renderAdmin();
       if (typeof updateAdminStats === 'function') updateAdminStats();
+      if (typeof renderAdmin === 'function') renderAdmin();
     }
   } catch (err) {
     console.error('Sync error:', err);
@@ -3399,59 +3397,7 @@ async function forceSyncUsers() {
 }
 
 window.addEventListener('load', () => {
-  localStorage.removeItem('lammetna_users');
-  localStorage.removeItem('users');
-  setTimeout(forceSyncUsers, 500);
-  setInterval(forceSyncUsers, 4000);
-});
-    // جلب المستخدمين مباشرة من قاعدة بيانات لمّتنا وتحديث لوحة الأدمن
-async function forceSyncUsers() {
-  try {
-    // 1. البحث عن اتصال Supabase الموجود في ملفك أو استخدام الاتصال المباشر
-    const client = window.supabaseClient || window.sb || window.supabase || (typeof sb !== 'undefined' ? sb : null) || (typeof supabase !== 'undefined' && typeof supabase.from === 'function' ? supabase : null);
-    
-    let data = null;
-
-    if (client && typeof client.from === 'function') {
-      const res = await client.from('users').select('*').order('id', { ascending: false });
-      data = res.data;
-    }
-
-    // 2. إذا جلب البيانات بنجاح، يحدث لوحة الأدمن والذاكرة فوراً
-    if (data && Array.isArray(data) && data.length > 0) {
-      const cleanUsers = data.map(u => ({
-        ...u,
-        id: u.id,
-        name: u.full_name || u.name || u.username || 'مستخدم',
-        full_name: u.full_name || u.name || u.username || 'مستخدم',
-        username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
-        phone: u.phone || '0000',
-        pass: u.pass || u.password || '',
-        created_at: u.created_at ? u.created_at.split('T')[0] : '2026-11-12'
-      }));
-
-      window.users = cleanUsers;
-      if (typeof users !== 'undefined') users = cleanUsers;
-      if (typeof state !== 'undefined' && state.users) state.users = cleanUsers;
-
-      // حفظ في جميع المفاتيح المحتملة التي يقرأ منها موقعك
-      localStorage.setItem('lammetna_users', JSON.stringify(cleanUsers));
-      localStorage.setItem('users', JSON.stringify(cleanUsers));
-      localStorage.setItem('db_users', JSON.stringify(cleanUsers));
-
-      // تحديث عرض الأدمن
-      if (typeof renderAdminUsers === 'function') renderAdminUsers();
-      if (typeof renderAdmin === 'function') renderAdmin();
-      if (typeof updateAdminStats === 'function') updateAdminStats();
-      if (typeof render === 'function') render();
-    }
-  } catch (err) {
-    console.error('Sync error:', err);
-  }
-}
-
-window.addEventListener('load', () => {
-  setTimeout(forceSyncUsers, 800);
+  setTimeout(forceSyncUsers, 600);
   setInterval(forceSyncUsers, 4000);
 });
   </script>
