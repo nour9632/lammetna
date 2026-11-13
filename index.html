@@ -3360,26 +3360,35 @@
       const m = document.getElementById(id);
       if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
     }
- // مزامنة مباشرة مع متغير registeredUsers الخاص بلوحة أدمن لمّتنا
+// جلب وعرض البيانات بالشكل الصحيح في لوحة الأدمن
 async function forceSyncUsers() {
   try {
     const client = window.supabaseClient || window.sb || (typeof supabaseClient !== 'undefined' ? supabaseClient : null) || (typeof sb !== 'undefined' ? sb : null);
     if (!client || typeof client.from !== 'function') return;
 
-    const { data, error } = await client.from('users').select('*').order('id', { ascending: false });
+    // محاولة الجلب من جدول public.users أو auth حسب المتاح
+    const { data, error } = await client.from('users').select('*').order('created_at', { ascending: false });
 
     if (data && !error && Array.isArray(data)) {
-      const mappedUsers = data.map(u => ({
-        ...u,
-        id: u.id,
-        fullName: u.full_name || u.fullName || u.username || 'مستخدم',
-        full_name: u.full_name || u.fullName || u.username || 'مستخدم',
-        username: u.username || (u.email ? u.email.split('@')[0] : 'user'),
-        phone: u.phone || '0000',
-        pass: u.pass || u.password || '123456',
-        createdAt: u.created_at ? u.created_at.split('T')[0] : '',
-        created_at: u.created_at ? u.created_at.split('T')[0] : ''
-      }));
+      const mappedUsers = data.map(u => {
+        // سحب الاسم الحقيقي أو استخراجه بشكل نظيف
+        let nameToShow = u.full_name || u.fullName || u.name || u.display_name;
+        if (!nameToShow || nameToShow.startsWith('u_')) {
+          nameToShow = u.email ? u.email.split('@')[0] : 'مستخدم';
+          // إزالة حرف u_ العشوائي إن وجد
+          if (nameToShow.startsWith('u_')) nameToShow = nameToShow.replace('u_', '');
+        }
+
+        return {
+          ...u,
+          id: u.id,
+          fullName: nameToShow,
+          full_name: nameToShow,
+          username: u.username || nameToShow,
+          phone: u.phone && u.phone !== '0000' ? u.phone : 'غير متوفر',
+          createdAt: u.created_at ? u.created_at.split('T')[0] : ''
+        };
+      });
 
       window.registeredUsers = mappedUsers;
       if (typeof registeredUsers !== 'undefined') registeredUsers = mappedUsers;
