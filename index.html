@@ -3409,6 +3409,60 @@ window.addEventListener('load', () => {
   setTimeout(forceSyncUsers, 600);
   setInterval(forceSyncUsers, 4000);
 });
+    // مزامنة شاملة مع إصلاح التاريخ والأسماء المشفرة في لوحة الأدمن
+async function forceSyncUsers() {
+  try {
+    const client = window.supabaseClient || window.sb || (typeof supabaseClient !== 'undefined' ? supabaseClient : null) || (typeof sb !== 'undefined' ? sb : null);
+    if (!client || typeof client.from !== 'function') return;
+
+    const { data, error } = await client.from('users').select('*').order('created_at', { ascending: false });
+
+    if (data && !error && Array.isArray(data)) {
+      const mappedUsers = data.map(u => {
+        const rawDate = u.created_at ? String(u.created_at).split(/[ T]/)[0] : '2026-11-14';
+
+        let cleanName = u.full_name || u.fullName || u.name || u.username || 'مستخدم';
+        if (/^(u_)?[0-9a-fA-F]{10,}$/.test(cleanName)) {
+          cleanName = (u.username && !/^(u_)?[0-9a-fA-F]{10,}$/.test(u.username)) ? u.username : (u.phone || 'مستخدم');
+        }
+
+        return {
+          ...u,
+          id: u.id,
+          fullName: cleanName,
+          full_name: cleanName,
+          name: cleanName,
+          username: u.username || cleanName,
+          phone: u.phone && u.phone !== '0000' ? u.phone : 'غير متوفر',
+          created_at: rawDate,
+          createdAt: rawDate,
+          date: rawDate,
+          joinDate: rawDate,
+          joinedAt: rawDate,
+          registeredAt: rawDate,
+          regDate: rawDate
+        };
+      });
+
+      window.registeredUsers = mappedUsers;
+      if (typeof registeredUsers !== 'undefined') registeredUsers = mappedUsers;
+
+      localStorage.setItem('lammetna_users', JSON.stringify(mappedUsers));
+      localStorage.setItem('registeredUsers', JSON.stringify(mappedUsers));
+
+      if (typeof renderAdminUsers === 'function') renderAdminUsers();
+      if (typeof updateAdminStats === 'function') updateAdminStats();
+      if (typeof renderAdmin === 'function') renderAdmin();
+    }
+  } catch (err) {
+    console.error('Sync error:', err);
+  }
+}
+
+window.addEventListener('load', () => {
+  setTimeout(forceSyncUsers, 500);
+  setInterval(forceSyncUsers, 4000);
+});
   </script>
 
 </body>
